@@ -20,7 +20,7 @@ st.markdown(f"""
         background-color: {BG_COLOR};
     }}
     
-    /* CAMBIO NUEVO: Cambiar el fondo de la barra superior blanca (Header de Streamlit) */
+    /* Cambiar el fondo de la barra superior de Streamlit */
     [data-testid="stHeader"] {{
         background-color: transparent !important;
     }}
@@ -106,9 +106,10 @@ def load_data():
 
 df = load_data()
 
-# Función auxiliar para configurar layouts de Plotly con el fondo exacto
+# Función auxiliar para configurar layouts con etiquetas claras
 def apply_dark_layout(fig, height=220, bottom_margin=10):
     fig.update_layout(
+        template="plotly_dark", # Fuerza el tema oscuro para las etiquetas
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
         font=dict(color=TEXT_COLOR),
@@ -154,7 +155,7 @@ with c4:
         promedios = df[py_cols_num].mean().tolist()
         categorias = ['Bucles', 'Pandas', 'Viz', 'Pip', 'Jupyter']
         fig_radar = go.Figure(data=go.Scatterpolar(r=promedios + [promedios[0]], theta=categorias + [categorias[0]], fill='toself', line=dict(color='#ff00ff')))
-        fig_radar.update_layout(polar=dict(bgcolor='rgba(0,0,0,0)', radialaxis=dict(visible=True, range=[1, 5], gridcolor='#444')))
+        fig_radar.update_layout(template="plotly_dark", polar=dict(bgcolor='rgba(0,0,0,0)', radialaxis=dict(visible=True, range=[1, 5], gridcolor='#444')))
         st.plotly_chart(apply_dark_layout(fig_radar, height=270, bottom_margin=40), use_container_width=True)
     st.markdown("<div class='analysis-text'><b>Análisis:</b> Déficit marcado en instalación de entornos (Pip). Jupyter y Bucles muestran mejor puntaje, pero se requiere nivelación técnica temprana.</div>", unsafe_allow_html=True)
 
