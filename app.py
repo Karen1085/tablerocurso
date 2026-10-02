@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import matplotlib.pyplot as plt
 
 # 1. CONFIGURACIÓN DE LA PÁGINA
 st.set_page_config(page_title="Diagnóstico de Perfil, Competencias e Intereses", layout="wide", initial_sidebar_state="collapsed")
@@ -60,14 +59,11 @@ h1, h2, h3, p, span {{ color: {TEXT_COLOR} !important; }}
 # 2. CARGA Y LIMPIEZA DE DATOS
 @st.cache_data
 def load_data():
-    # Usar un bloque try-except por si el archivo no está en el directorio durante pruebas
     try:
         df = pd.read_excel("datos.xlsx", skiprows=1)
     except FileNotFoundError:
-        # Retornar un DataFrame vacío estructurado para evitar que la app se rompa
         return pd.DataFrame()
         
-    # Anonimización
     cols_to_drop = ["Nombre completo", "Correo electrónico del destinatario", "Apellido del destinatario", "Nombre del destinatario", "Dirección IP", "Referencia a datos externos", "Latitud de la ubicación", "Longitud de la ubicación"]
     df = df.drop(columns=[c for c in cols_to_drop if c in df.columns], errors='ignore')
 
@@ -114,32 +110,33 @@ def load_data():
 
 df = load_data()
 
-# Función auxiliar para configurar layouts con etiquetas BLANCAS y claras
+# Función auxiliar para configurar layouts de forma segura para todos los gráficos
 def apply_dark_layout(fig, height=220, bottom_margin=10):
     fig.update_layout(
         template="plotly_dark",
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(color='#ffffff'),  # Se fuerza blanco puro
-        legend=dict(font=dict(color='#ffffff')),  # Se fuerza blanco en la leyenda
-        xaxis=dict(tickfont=dict(color='#ffffff'), titlefont=dict(color='#ffffff')), 
-        yaxis=dict(tickfont=dict(color='#ffffff'), titlefont=dict(color='#ffffff')), 
+        font=dict(color='#ffffff'),
+        legend=dict(font=dict(color='#ffffff')),
         margin=dict(t=30, b=bottom_margin, l=10, r=10),
         height=height
     )
+    
+    # Se usa update_xaxes y update_yaxes para evitar errores en gráficos de pastel
+    fig.update_xaxes(tickfont=dict(color='#ffffff'), title_font=dict(color='#ffffff'))
+    fig.update_yaxes(tickfont=dict(color='#ffffff'), title_font=dict(color='#ffffff'))
+    
     return fig
 
-# NUEVO TÍTULO
 st.title("Diagnóstico de Perfil, Competencias e Intereses del Curso")
 
-# ================= FILA 0: INDICADORES RESUMEN (KPIs) =================
+# ================= FILA 0: INDICADORES RESUMEN =================
 if not df.empty:
     kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
     
     total_participantes = len(df)
     kpi1.metric("Total Participantes", total_participantes)
     
-    # Estimación de +5 años (asumiendo formato string o numérico)
     if 'Experiencia' in df.columns:
         exp_5_plus = df['Experiencia'].astype(str).str.contains(r'5|6|7|8|9|10|11|12|13|14|15|16|17|18|19|20|más|mayor', case=False, na=False).sum()
         porcentaje_exp = int((exp_5_plus / total_participantes) * 100) if total_participantes > 0 else 0
@@ -166,7 +163,6 @@ with c1:
     if 'Formacion' in df.columns:
         fig_form = px.pie(df, names='Formacion', hole=0.6, color_discrete_sequence=px.colors.sequential.Agsunset)
         st.plotly_chart(apply_dark_layout(fig_form), use_container_width=True, theme=None)
-        # TEXTO CORREGIDO
         st.markdown("<div class='analysis-text'><b>Análisis:</b> Predominancia de perfiles técnicos/económicos, un punto de partida sólido para abordar conceptos de modelamiento complejo.</div>", unsafe_allow_html=True)
 
 with c2:
@@ -181,7 +177,6 @@ with c3:
     if 'Uso_IAGen' in df.columns:
         fig_ia = px.pie(df, names='Uso_IAGen', hole=0.6, color_discrete_sequence=px.colors.sequential.Tealgrn)
         st.plotly_chart(apply_dark_layout(fig_ia), use_container_width=True, theme=None)
-        # TEXTO CORREGIDO
         st.markdown("<div class='analysis-text'><b>Análisis:</b> Alta familiaridad con herramientas como ChatGPT/Claude. Existe oportunidad para introducir prácticas modernas de código asistido.</div>", unsafe_allow_html=True)
 
 st.markdown("---")
@@ -189,13 +184,11 @@ st.markdown("---")
 # ================= FILA 2: HABILIDADES Y LOGÍSTICA =================
 c4, c5, c6 = st.columns([1.2, 1.5, 1])
 with c4:
-    # REEMPLAZO RADAR POR MAPA DE CALOR
     st.markdown("### Nivel Python (Mapa de Calor)")
     py_cols_num = ['Py_Bucle_Num', 'Py_Pandas_Num', 'Py_Viz_Num', 'Py_Pip_Num', 'Py_Jupyter_Num']
     if all(c in df.columns for c in py_cols_num):
         df_py = df[py_cols_num].copy()
         df_py.columns = ['Bucles', 'Pandas', 'Viz', 'Pip', 'Jupyter']
-        # Ordenar por el score total de Python para visibilizar a principiantes vs avanzados
         df_py['Total'] = df_py.sum(axis=1)
         df_py = df_py.sort_values('Total', ascending=False).drop(columns=['Total'])
         
@@ -205,7 +198,7 @@ with c4:
             color_continuous_scale='Sunsetdark',
             labels=dict(x="Participantes (ordenados)", y="Competencia", color="Nivel (1-5)")
         )
-        fig_hm.update_xaxes(showticklabels=False) # Ocultar los índices individuales
+        fig_hm.update_xaxes(showticklabels=False)
         st.plotly_chart(apply_dark_layout(fig_hm, height=270, bottom_margin=40), use_container_width=True, theme=None)
         st.markdown("<div class='analysis-text'><b>Análisis:</b> Alta heterogeneidad. Hay participantes muy principiantes conviviendo con perfiles intermedios-avanzados. Jupyter es lo más familiar; Pip requiere atención.</div>", unsafe_allow_html=True)
 
@@ -217,7 +210,6 @@ with c5:
         conteo_herr.columns = ['Herramienta', 'Cantidad']
         fig_herr = px.bar(conteo_herr, x='Cantidad', y='Herramienta', orientation='h', color='Cantidad', color_continuous_scale='Purp')
         st.plotly_chart(apply_dark_layout(fig_herr, height=270), use_container_width=True, theme=None)
-        # TEXTO CORREGIDO
         st.markdown("<div class='analysis-text'><b>Análisis:</b> Excel/VBA es la herramienta más extendida en el grupo. El enfoque debe ser enseñar Python como el 'siguiente paso evolutivo'.</div>", unsafe_allow_html=True)
 
 with c6:
@@ -229,7 +221,6 @@ with c6:
         df['Entorno_Corto'] = df['Entorno'].str.split('(').str[0]
         fig_ent = px.pie(df, names='Entorno_Corto', title='Entorno Práctica', hole=0.7, color_discrete_sequence=['#ff4d4d', '#cc0000'])
         st.plotly_chart(apply_dark_layout(fig_ent, height=135), use_container_width=True, theme=None)
-    # TEXTO CORREGIDO
     st.markdown("<div class='analysis-text'><b>Análisis:</b> Es explícito que hay participantes con inglés básico. Existen restricciones o incertidumbre sobre acceso a entornos locales y preferencia por la Nube.</div>", unsafe_allow_html=True)
 
 st.markdown("---")
@@ -258,7 +249,6 @@ with colB:
 with colC:
     rk_cols_all = [c for c in df.columns if c.startswith('Rk_')]
     if rk_cols_all:
-        # CORRECCIÓN DE DEMANDA: Contar cuántas veces está en el TOP 3 (valores <= 3)
         top3_counts = (df[rk_cols_all] <= 3).sum().sort_values(ascending=True)
         nombres_amigables = [col.replace('Rk_', '') for col in top3_counts.index]
         
@@ -276,7 +266,6 @@ if 'Expectativas' in df.columns:
     textos_validos = df['Expectativas'].dropna().astype(str).tolist()
     
     with col_nlp1:
-        # REEMPLAZO WORDCLOUD POR CATEGORÍAS
         text_lower = pd.Series(textos_validos).str.lower()
         
         c_riesgo = text_lower.str.contains(r'riesgo|risk|var|volatilidad|crédito').sum()
