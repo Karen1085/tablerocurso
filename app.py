@@ -106,13 +106,16 @@ def load_data():
 
 df = load_data()
 
-# Función auxiliar para configurar layouts con etiquetas claras
+# Función auxiliar para configurar layouts con etiquetas forzosamente claras
 def apply_dark_layout(fig, height=220, bottom_margin=10):
     fig.update_layout(
-        template="plotly_dark", # Fuerza el tema oscuro para las etiquetas
+        template="plotly_dark",
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(color=TEXT_COLOR),
+        font=dict(color=TEXT_COLOR),  # Color de texto global
+        legend=dict(font=dict(color=TEXT_COLOR)),  # Asegurar color en leyenda
+        xaxis=dict(tickfont=dict(color=TEXT_COLOR), titlefont=dict(color=TEXT_COLOR)), # Eje X
+        yaxis=dict(tickfont=dict(color=TEXT_COLOR), titlefont=dict(color=TEXT_COLOR)), # Eje Y
         margin=dict(t=30, b=bottom_margin, l=10, r=10),
         height=height
     )
@@ -127,21 +130,22 @@ with c1:
     st.markdown("### Formación")
     if 'Formacion' in df.columns:
         fig_form = px.pie(df, names='Formacion', hole=0.6, color_discrete_sequence=px.colors.sequential.Agsunset)
-        st.plotly_chart(apply_dark_layout(fig_form), use_container_width=True)
+        # Importante: theme=None evita que Streamlit sobrescriba nuestros colores de texto
+        st.plotly_chart(apply_dark_layout(fig_form), use_container_width=True, theme=None)
     st.markdown("<div class='analysis-text'><b>Análisis:</b> Predominancia de perfiles técnicos/económicos. Base matemática fuerte, ideal para absorber conceptos de modelamiento complejo.</div>", unsafe_allow_html=True)
 
 with c2:
     st.markdown("### Experiencia Previa")
     if 'Experiencia' in df.columns:
         fig_exp = px.histogram(df, y='Experiencia', color_discrete_sequence=['#00d4ff'])
-        st.plotly_chart(apply_dark_layout(fig_exp), use_container_width=True)
+        st.plotly_chart(apply_dark_layout(fig_exp), use_container_width=True, theme=None)
     st.markdown("<div class='analysis-text'><b>Análisis:</b> Experiencia concentrada en bandas intermedias y senior. Los casos de negocio deben estar alineados con problemas corporativos reales.</div>", unsafe_allow_html=True)
 
 with c3:
     st.markdown("### Uso IA Generativa")
     if 'Uso_IAGen' in df.columns:
         fig_ia = px.pie(df, names='Uso_IAGen', hole=0.6, color_discrete_sequence=px.colors.sequential.Tealgrn)
-        st.plotly_chart(apply_dark_layout(fig_ia), use_container_width=True)
+        st.plotly_chart(apply_dark_layout(fig_ia), use_container_width=True, theme=None)
     st.markdown("<div class='analysis-text'><b>Análisis:</b> Alta familiaridad con ChatGPT/Claude. Listos para usar LLMs como asistentes de programación (Copilots) durante el curso.</div>", unsafe_allow_html=True)
 
 st.markdown("---")
@@ -155,8 +159,15 @@ with c4:
         promedios = df[py_cols_num].mean().tolist()
         categorias = ['Bucles', 'Pandas', 'Viz', 'Pip', 'Jupyter']
         fig_radar = go.Figure(data=go.Scatterpolar(r=promedios + [promedios[0]], theta=categorias + [categorias[0]], fill='toself', line=dict(color='#ff00ff')))
-        fig_radar.update_layout(template="plotly_dark", polar=dict(bgcolor='rgba(0,0,0,0)', radialaxis=dict(visible=True, range=[1, 5], gridcolor='#444')))
-        st.plotly_chart(apply_dark_layout(fig_radar, height=270, bottom_margin=40), use_container_width=True)
+        fig_radar.update_layout(
+            template="plotly_dark", 
+            polar=dict(
+                bgcolor='rgba(0,0,0,0)', 
+                radialaxis=dict(visible=True, range=[1, 5], gridcolor='#444', tickfont=dict(color=TEXT_COLOR)),
+                angularaxis=dict(tickfont=dict(color=TEXT_COLOR))
+            )
+        )
+        st.plotly_chart(apply_dark_layout(fig_radar, height=270, bottom_margin=40), use_container_width=True, theme=None)
     st.markdown("<div class='analysis-text'><b>Análisis:</b> Déficit marcado en instalación de entornos (Pip). Jupyter y Bucles muestran mejor puntaje, pero se requiere nivelación técnica temprana.</div>", unsafe_allow_html=True)
 
 with c5:
@@ -166,18 +177,18 @@ with c5:
         conteo_herr = todas_herr.value_counts().reset_index()
         conteo_herr.columns = ['Herramienta', 'Cantidad']
         fig_herr = px.bar(conteo_herr, x='Cantidad', y='Herramienta', orientation='h', color='Cantidad', color_continuous_scale='Purp')
-        st.plotly_chart(apply_dark_layout(fig_herr, height=270), use_container_width=True)
+        st.plotly_chart(apply_dark_layout(fig_herr, height=270), use_container_width=True, theme=None)
     st.markdown("<div class='analysis-text'><b>Análisis:</b> Excel/VBA es la zona de confort absoluta. El enfoque debe ser enseñar Python como el 'siguiente paso evolutivo' de Excel.</div>", unsafe_allow_html=True)
 
 with c6:
     st.markdown("### Logística (Inglés y Entorno)")
     if 'Ingles' in df.columns:
         fig_ing = px.pie(df, names='Ingles', title='Lectura Inglés', hole=0.7, color_discrete_sequence=['#4dff4d', '#009900'])
-        st.plotly_chart(apply_dark_layout(fig_ing, height=135), use_container_width=True)
+        st.plotly_chart(apply_dark_layout(fig_ing, height=135), use_container_width=True, theme=None)
     if 'Entorno' in df.columns:
         df['Entorno_Corto'] = df['Entorno'].str.split('(').str[0]
         fig_ent = px.pie(df, names='Entorno_Corto', title='Entorno Práctica', hole=0.7, color_discrete_sequence=['#ff4d4d', '#cc0000'])
-        st.plotly_chart(apply_dark_layout(fig_ent, height=135), use_container_width=True)
+        st.plotly_chart(apply_dark_layout(fig_ent, height=135), use_container_width=True, theme=None)
     st.markdown("<div class='analysis-text'><b>Análisis:</b> Sin barrera idiomática significativa. Fuerte preferencia y necesidad de trabajar en la Nube (Google Colab).</div>", unsafe_allow_html=True)
 
 st.markdown("---")
@@ -191,7 +202,7 @@ with colA:
     if 'Score_Python_Total' in df.columns and 'Rk_Auto' in df.columns:
         fig_scatter = px.scatter(df, x='Score_Python_Total', y='Rk_Auto', trendline="ols", color_discrete_sequence=['#00ffff'])
         fig_scatter.update_layout(xaxis_title="Score Python (Alto=Mejor)", yaxis_title="Interés Automatización (1=Alto)")
-        st.plotly_chart(apply_dark_layout(fig_scatter, height=280), use_container_width=True)
+        st.plotly_chart(apply_dark_layout(fig_scatter, height=280), use_container_width=True, theme=None)
     st.markdown("<div class='analysis-text'><b>Análisis:</b> Relación lineal (Scatter). Permite validar si quienes más saben programar son los que más piden temas automáticos.</div>", unsafe_allow_html=True)
 
 with colB:
@@ -201,7 +212,7 @@ with colB:
         cols_corr = ['Score_Python_Total'] + rk_cols
         corr_matrix = df[cols_corr].corr().round(2)
         fig_corr = px.imshow(corr_matrix, text_auto=True, color_continuous_scale='RdBu_r', aspect="auto")
-        st.plotly_chart(apply_dark_layout(fig_corr, height=280), use_container_width=True)
+        st.plotly_chart(apply_dark_layout(fig_corr, height=280), use_container_width=True, theme=None)
     st.markdown("<div class='analysis-text'><b>Análisis:</b> Mapa de calor. Colores extremos indican variables que se mueven juntas. Útil para empaquetar módulos del temario.</div>", unsafe_allow_html=True)
 
 with colC:
@@ -211,7 +222,7 @@ with colC:
         nombres_amigables = [col.replace('Rk_', '') for col in promedios_rk.index]
         fig_rk = px.bar(x=promedios_rk.values, y=nombres_amigables, orientation='h', color=promedios_rk.values, color_continuous_scale='Sunsetdark')
         fig_rk.update_layout(xaxis_title="Prioridad Media (Cerca a 1 = Mejor)", yaxis_title="")
-        st.plotly_chart(apply_dark_layout(fig_rk, height=280), use_container_width=True)
+        st.plotly_chart(apply_dark_layout(fig_rk, height=280), use_container_width=True, theme=None)
     st.markdown("<div class='analysis-text'><b>Análisis:</b> Automatización y Riesgos lideran. Se sugiere estructurar el proyecto final alrededor de la sistematización de modelos de riesgo.</div>", unsafe_allow_html=True)
 
 st.markdown("---")
