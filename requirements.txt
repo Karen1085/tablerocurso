@@ -1,4 +1,8 @@
 streamlit
 pandas
 plotly
+seaborn
+matplotlib
+wordcloud
+statsmodels
 openpyxl
