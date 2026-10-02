@@ -9,7 +9,7 @@ st.set_page_config(page_title="Diagnóstico de Perfil, Competencias e Intereses"
 # Colores inspirados en el diseño de referencia
 BG_COLOR = "#151622"
 CARD_COLOR = "#1e1f30"
-TEXT_COLOR = "#ffffff"  # Blanco puro para arreglar el problema de legibilidad
+TEXT_COLOR = "#ffffff"
 
 st.markdown(f"""
 <style>
@@ -67,6 +67,7 @@ def load_data():
     cols_to_drop = ["Nombre completo", "Correo electrónico del destinatario", "Apellido del destinatario", "Nombre del destinatario", "Dirección IP", "Referencia a datos externos", "Latitud de la ubicación", "Longitud de la ubicación"]
     df = df.drop(columns=[c for c in cols_to_drop if c in df.columns], errors='ignore')
 
+    # Nuevo mapeo incluyendo "Temas_IA"
     col_map = {
         "Área funcional": "Area",
         "Años de experiencia laboral": "Experiencia",
@@ -88,6 +89,7 @@ def load_data():
         "De los siguientes temas de aplicación, selecciona y ordena tus 3 favoritos (1 = mayor interés) - Portafolios y optimización": "Rk_Portafolio",
         "De los siguientes temas de aplicación, selecciona y ordena tus 3 favoritos (1 = mayor interés) - Automatización de reportes financieros": "Rk_Auto",
         "¿Te interesaría que el curso incluyera aplicaciones financieras apoyadas en IA / machine learning?": "Interes_IA",
+        "Temas de IA de interés": "Temas_IA",  # Nueva columna mapeada
         "¿Has usado herramientas de IA generativa (ChatGPT, Claude, Copilot) para tareas de trabajo?": "Uso_IAGen",
         "¿Qué te gustaría poder hacer al terminar el curso que hoy no puedas?": "Expectativas"
     }
@@ -110,7 +112,6 @@ def load_data():
 
 df = load_data()
 
-# Función auxiliar para configurar layouts de forma segura para todos los gráficos
 def apply_dark_layout(fig, height=220, bottom_margin=10):
     fig.update_layout(
         template="plotly_dark",
@@ -121,11 +122,8 @@ def apply_dark_layout(fig, height=220, bottom_margin=10):
         margin=dict(t=30, b=bottom_margin, l=10, r=10),
         height=height
     )
-    
-    # Se usa update_xaxes y update_yaxes para evitar errores en gráficos de pastel
     fig.update_xaxes(tickfont=dict(color='#ffffff'), title_font=dict(color='#ffffff'))
     fig.update_yaxes(tickfont=dict(color='#ffffff'), title_font=dict(color='#ffffff'))
-    
     return fig
 
 st.title("Diagnóstico de Perfil, Competencias e Intereses del Curso")
@@ -138,21 +136,23 @@ if not df.empty:
     kpi1.metric("Total Participantes", total_participantes)
     
     if 'Experiencia' in df.columns:
-        exp_5_plus = df['Experiencia'].astype(str).str.contains(r'5|6|7|8|9|10|11|12|13|14|15|16|17|18|19|20|más|mayor', case=False, na=False).sum()
+        exp_5_plus = df['Experiencia'].astype(str).str.contains(r'5 a 10|Más de 10|5|6|7|8|9|10', case=False, na=False).sum()
         porcentaje_exp = int((exp_5_plus / total_participantes) * 100) if total_participantes > 0 else 0
         kpi2.metric("Con 5+ años exp.", f"{porcentaje_exp}%")
     
     if 'Curso_Previo' in df.columns:
-        sin_python = df['Curso_Previo'].astype(str).str.contains('no', case=False, na=False).sum()
+        sin_python = df['Curso_Previo'].astype(str).str.strip().str.lower().eq('no').sum()
         kpi3.metric("Nunca han tomado Python", sin_python)
         
     if 'Exp_Programacion' in df.columns:
-        exp_prog = df['Exp_Programacion'].astype(str).str.contains('sí|si', case=False, na=False).sum()
+        # Se cuenta cualquiera que tenga experiencia Básica, Intermedia o Avanzada
+        exp_prog = df['Exp_Programacion'].astype(str).str.contains('Básica|Intermedia|Avanzada', case=False, na=False).sum()
         kpi4.metric("Experiencia programando", exp_prog)
         
     if 'Interes_IA' in df.columns:
-        interes_ia = df['Interes_IA'].astype(str).str.contains('sí|si', case=False, na=False).sum()
-        kpi5.metric("Alto interés en IA/ML", interes_ia)
+        # Se verifica la palabra "Mucho" que es la que viene en la encuesta real
+        interes_ia = df['Interes_IA'].astype(str).str.contains('Mucho|Sí|Si', case=False, na=False).sum()
+        kpi5.metric("Alto interés en IA/ML", f"{interes_ia} de {total_participantes}")
 
 st.markdown("---")
 
@@ -184,23 +184,30 @@ st.markdown("---")
 # ================= FILA 2: HABILIDADES Y LOGÍSTICA =================
 c4, c5, c6 = st.columns([1.2, 1.5, 1])
 with c4:
-    st.markdown("### Nivel Python (Mapa de Calor)")
+    # REGRESO AL GRÁFICO DE ARAÑA (RADAR)
+    st.markdown("### Nivel Python (Radar)")
     py_cols_num = ['Py_Bucle_Num', 'Py_Pandas_Num', 'Py_Viz_Num', 'Py_Pip_Num', 'Py_Jupyter_Num']
     if all(c in df.columns for c in py_cols_num):
-        df_py = df[py_cols_num].copy()
-        df_py.columns = ['Bucles', 'Pandas', 'Viz', 'Pip', 'Jupyter']
-        df_py['Total'] = df_py.sum(axis=1)
-        df_py = df_py.sort_values('Total', ascending=False).drop(columns=['Total'])
+        promedios = df[py_cols_num].mean().tolist()
+        categorias = ['Bucles', 'Pandas', 'Viz', 'Pip', 'Jupyter']
         
-        fig_hm = px.imshow(
-            df_py.T, 
-            aspect='auto', 
-            color_continuous_scale='Sunsetdark',
-            labels=dict(x="Participantes (ordenados)", y="Competencia", color="Nivel (1-5)")
+        fig_radar = go.Figure(data=go.Scatterpolar(
+            r=promedios + [promedios[0]], 
+            theta=categorias + [categorias[0]], 
+            fill='toself', 
+            line=dict(color='#ff00ff')
+        ))
+        
+        fig_radar.update_layout(
+            polar=dict(
+                bgcolor='rgba(0,0,0,0)',
+                radialaxis=dict(visible=True, range=[1, 5], gridcolor='#444', tickfont=dict(color='#ffffff')),
+                angularaxis=dict(tickfont=dict(color='#ffffff'))
+            )
         )
-        fig_hm.update_xaxes(showticklabels=False)
-        st.plotly_chart(apply_dark_layout(fig_hm, height=270, bottom_margin=40), use_container_width=True, theme=None)
-        st.markdown("<div class='analysis-text'><b>Análisis:</b> Alta heterogeneidad. Hay participantes muy principiantes conviviendo con perfiles intermedios-avanzados. Jupyter es lo más familiar; Pip requiere atención.</div>", unsafe_allow_html=True)
+        
+        st.plotly_chart(apply_dark_layout(fig_radar, height=270, bottom_margin=40), use_container_width=True, theme=None)
+        st.markdown("<div class='analysis-text'><b>Análisis:</b> En promedio, Jupyter es el entorno más familiar. El déficit más marcado está en la instalación de paquetes (Pip), lo que requerirá nivelación técnica temprana.</div>", unsafe_allow_html=True)
 
 with c5:
     st.markdown("### Herramientas Actuales")
@@ -259,21 +266,24 @@ with colC:
 
 st.markdown("---")
 
-# ================= FILA 4: EXPECTATIVAS (CATEGORÍAS + MURO DE CITAS) =================
-st.markdown("### Expectativas del Curso (Categorización y Textos)")
-col_nlp1, col_nlp2 = st.columns([1.5, 1])
+# ================= FILA 4: EXPECTATIVAS Y FOCO EN IA =================
+st.markdown("### Expectativas y Casos de Uso en Inteligencia Artificial")
+# Se crean 3 columnas en lugar de 2 para acomodar la nueva gráfica de Temas de IA
+col_nlp1, col_nlp2, col_nlp3 = st.columns([1.2, 1.2, 1])
+
 if 'Expectativas' in df.columns:
     textos_validos = df['Expectativas'].dropna().astype(str).tolist()
     
     with col_nlp1:
+        st.markdown("#### Categorías de Expectativas")
         text_lower = pd.Series(textos_validos).str.lower()
         
-        c_riesgo = text_lower.str.contains(r'riesgo|risk|var|volatilidad|crédito').sum()
+        c_riesgo = text_lower.str.contains(r'riesgo|risk|var|volatilidad|crédito|precios').sum()
         c_auto = text_lower.str.contains(r'automat|sistemati|reporte|optimiza|agili').sum()
-        c_pred = text_lower.str.contains(r'predi|model|machine learning|ia|pronóstic').sum()
+        c_pred = text_lower.str.contains(r'predi|model|machine learning|ia|pronóstic|analitica|proyectar').sum()
         
         df_cats = pd.DataFrame({
-            'Categoría': ['Riesgo', 'Automatización/Sistematización', 'Predicción/Modelamiento'],
+            'Categoría': ['Riesgo / Precios', 'Automatización', 'Predicción / IA'],
             'Menciones': [c_riesgo, c_auto, c_pred]
         })
         
@@ -281,11 +291,28 @@ if 'Expectativas' in df.columns:
                           x='Menciones', y='Categoría', orientation='h', 
                           color='Categoría', color_discrete_sequence=['#00ffff', '#ff00ff', '#00d4ff'])
         fig_cats.update_layout(showlegend=False)
-        st.plotly_chart(apply_dark_layout(fig_cats, height=350), use_container_width=True, theme=None)
-        st.markdown("<div class='analysis-text'><b>Análisis por Clasificación:</b> Las expectativas pivotan entre reducir la carga operativa (automatización) y sofisticar las métricas de proyección (predicción y riesgo).</div>", unsafe_allow_html=True)
+        st.plotly_chart(apply_dark_layout(fig_cats, height=300), use_container_width=True, theme=None)
+        st.markdown("<div class='analysis-text'>Las expectativas pivotan fuertemente hacia la reducción de carga operativa y el modelamiento proyectivo.</div>", unsafe_allow_html=True)
 
-    with col_nlp2:
-        st.markdown("<div style='height: 380px; overflow-y: auto; padding-right: 10px;'>", unsafe_allow_html=True)
+with col_nlp2:
+    st.markdown("#### Temas Específicos de IA (Interés)")
+    if 'Temas_IA' in df.columns:
+        # Extrae y cuenta los temas específicos de IA solicitados por el 100% de la clase
+        todas_ia = df['Temas_IA'].dropna().str.split(',').explode().str.strip()
+        conteo_ia = todas_ia.value_counts().reset_index()
+        conteo_ia.columns = ['Tema de IA', 'Votos']
+        
+        fig_ia_temas = px.bar(conteo_ia.sort_values('Votos', ascending=True), 
+                              x='Votos', y='Tema de IA', orientation='h', 
+                              color='Votos', color_continuous_scale='Teal')
+        st.plotly_chart(apply_dark_layout(fig_ia_temas, height=300), use_container_width=True, theme=None)
+        st.markdown("<div class='analysis-text'><b>Correlación:</b> Desglose del KPI '6 de 6'. Muestra qué casos de uso específicos de IA justifican el alto interés general.</div>", unsafe_allow_html=True)
+
+with col_nlp3:
+    st.markdown("#### Muro de Citas")
+    if 'Expectativas' in df.columns:
+        st.markdown("<div style='height: 330px; overflow-y: auto; padding-right: 10px;'>", unsafe_allow_html=True)
         for texto in textos_validos:
-            st.markdown(f"<div class='quote-card'>❝ {texto} ❞</div>", unsafe_allow_html=True)
+            if texto.strip():  # Evitar imprimir textos vacíos
+                st.markdown(f"<div class='quote-card'>❝ {texto} ❞</div>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
