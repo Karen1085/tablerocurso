@@ -106,7 +106,7 @@ def load_data():
 
 df = load_data()
 
-# Función auxiliar para configurar layouts con etiquetas forzosamente claras
+# Función auxiliar para configurar layouts con etiquetas forzosamente claras (VERSIÓN CORREGIDA)
 def apply_dark_layout(fig, height=220, bottom_margin=10):
     fig.update_layout(
         template="plotly_dark",
@@ -114,11 +114,12 @@ def apply_dark_layout(fig, height=220, bottom_margin=10):
         plot_bgcolor='rgba(0,0,0,0)',
         font=dict(color=TEXT_COLOR),  # Color de texto global
         legend=dict(font=dict(color=TEXT_COLOR)),  # Asegurar color en leyenda
-        xaxis=dict(tickfont=dict(color=TEXT_COLOR), titlefont=dict(color=TEXT_COLOR)), # Eje X
-        yaxis=dict(tickfont=dict(color=TEXT_COLOR), titlefont=dict(color=TEXT_COLOR)), # Eje Y
         margin=dict(t=30, b=bottom_margin, l=10, r=10),
         height=height
     )
+    # Actualizar ejes solo si el gráfico los tiene (evita error en gráficos circulares)
+    fig.update_xaxes(tickfont=dict(color=TEXT_COLOR), titlefont=dict(color=TEXT_COLOR))
+    fig.update_yaxes(tickfont=dict(color=TEXT_COLOR), titlefont=dict(color=TEXT_COLOR))
     return fig
 
 st.title("Diagnóstico de Perfil y Competencias Técnicas")
@@ -130,7 +131,6 @@ with c1:
     st.markdown("### Formación")
     if 'Formacion' in df.columns:
         fig_form = px.pie(df, names='Formacion', hole=0.6, color_discrete_sequence=px.colors.sequential.Agsunset)
-        # Importante: theme=None evita que Streamlit sobrescriba nuestros colores de texto
         st.plotly_chart(apply_dark_layout(fig_form), use_container_width=True, theme=None)
     st.markdown("<div class='analysis-text'><b>Análisis:</b> Predominancia de perfiles técnicos/económicos. Base matemática fuerte, ideal para absorber conceptos de modelamiento complejo.</div>", unsafe_allow_html=True)
 
