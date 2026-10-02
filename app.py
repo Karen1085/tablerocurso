@@ -19,7 +19,13 @@ st.markdown(f"""
     .stApp {{
         background-color: {BG_COLOR};
     }}
-    .block-container {{ padding-top: 1rem; padding-bottom: 0rem; }}
+    
+    /* CAMBIO NUEVO: Cambiar el fondo de la barra superior blanca (Header de Streamlit) */
+    [data-testid="stHeader"] {{
+        background-color: transparent !important;
+    }}
+    
+    .block-container {{ padding-top: 2rem; padding-bottom: 0rem; }}
     h1, h2, h3, p, span {{ color: {TEXT_COLOR} !important; }}
     
     /* Estilos para el muro de citas */
